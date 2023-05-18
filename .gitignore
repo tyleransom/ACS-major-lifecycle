@@ -1,4 +1,6 @@
-data/
+data/*.dat
+data/*.dta
+data/*.gz
 /*.pdf
 *.tex
 *.docx
