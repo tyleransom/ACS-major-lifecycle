@@ -4,3 +4,6 @@ data/*.gz
 /*.pdf
 *.tex
 *.docx
+*.sty
+*.bib
+references/
