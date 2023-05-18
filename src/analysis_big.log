@@ -1,0 +1,648 @@
+----------------------------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\ADMIN.DESKTOP-90SRH89\Dropbox\Conferences\SFS-Cavalcade-May2023\src\analysis_big.log
+  log type:  text
+ opened on:  16 May 2023, 08:30:29
+
+. 
+. global datpath "../data/"
+
+. 
+. * load data
+. use ${datpath}acs0919cleaned.dta, clear
+
+. 
+. * generate missing indicator for wage
+. gen mi_wage = incwage==0
+
+. tab sex, sum(mi_wage)
+
+            |         Summary of mi_wage
+        Sex |        Mean   Std. dev.       Freq.
+------------+------------------------------------
+       Male |   .10554778   .30725801   2,557,363
+     Female |   .17834294   .38280123   3,071,442
+------------+------------------------------------
+      Total |   .14526956   .35237244   5,628,805
+
+. 
+. * how often are wages imputed?
+. sum bad_wage, d
+
+                          bad_wage
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs           5,628,805
+25%            0              0       Sum of wgt.   5,628,805
+
+50%            0                      Mean           .1240871
+                        Largest       Std. dev.      .3296809
+75%            0              1
+90%            1              1       Variance       .1086895
+95%            1              1       Skewness       2.280465
+99%            1              1       Kurtosis       6.200522
+
+. 
+. * what fraction of sample are FTFY workers?
+. sum ftfy, d
+
+                            ftfy
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs           5,628,805
+25%            0              0       Sum of wgt.   5,628,805
+
+50%            1                      Mean           .6613397
+                        Largest       Std. dev.      .4732542
+75%            1              1
+90%            1              1       Variance       .2239696
+95%            1              1       Skewness      -.6818309
+99%            1              1       Kurtosis       1.464893
+
+. 
+. *-------------------------------------------------------------------------------
+. * Replication
+. *-------------------------------------------------------------------------------
+. 
+. * wage variables
+. gen log1pwage = log(1+incwage)
+
+. gen logwage   = log(incwage)
+(817,694 missing values generated)
+
+. 
+. * race variable
+. ren race race_disag
+
+. generat race = .
+(5,628,805 missing values generated)
+
+. replace race = 1 if hispan==0 & race_disag==1
+(4,169,078 real changes made)
+
+. replace race = 2 if hispan==0 & race_disag==2
+(358,549 real changes made)
+
+. replace race = 3 if hispan==1
+(190,814 real changes made)
+
+. replace race = 4 if hispan==0 & inrange(race_disag,4,6)
+(561,174 real changes made)
+
+. tab race, mi
+
+       race |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,169,078       74.07       74.07
+          2 |    358,549        6.37       80.44
+          3 |    190,814        3.39       83.83
+          4 |    561,174        9.97       93.80
+          . |    349,190        6.20      100.00
+------------+-----------------------------------
+      Total |  5,628,805      100.00
+
+. replace race = 5 if mi(race)
+(349,190 real changes made)
+
+. 
+. lab def vlrace 1 "Non-Hispanic White" 2 "African American" 3 "Hispanic" 4 "Asian" 5 "Other"
+
+. lab val race vlrace
+
+. tab race, mi
+
+              race |      Freq.     Percent        Cum.
+-------------------+-----------------------------------
+Non-Hispanic White |  4,169,078       74.07       74.07
+  African American |    358,549        6.37       80.44
+          Hispanic |    190,814        3.39       83.83
+             Asian |    561,174        9.97       93.80
+             Other |    349,190        6.20      100.00
+-------------------+-----------------------------------
+             Total |  5,628,805      100.00
+
+. 
+. * descriptive statistics
+. sum incwage, d
+
+                   Wage and salary income
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs           5,628,805
+25%        16000              0       Sum of wgt.   5,628,805
+
+50%        48000                      Mean            63955.8
+                        Largest       Std. dev.      76831.06
+75%        82000         736000
+90%       130000         736000       Variance       5.90e+09
+95%       180000         736000       Skewness       3.281554
+99%       427000         736000       Kurtosis        18.1404
+
+. sum log1pwage, d
+
+                          log1pwage
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs           5,628,805
+25%     9.680407              0       Sum of wgt.   5,628,805
+
+50%     10.77898                      Mean           9.217124
+                        Largest       Std. dev.      3.927428
+75%     11.31449       13.50899
+90%      11.7753       13.50899       Variance       15.42469
+95%     12.10072       13.50899       Skewness      -1.769595
+99%     12.96454       13.50899       Kurtosis       4.485913
+
+. 
+. * initial mincer regressions
+. local covars c.age##c.age b5.race b1.sex i.year 
+
+. reg incwage `covars', r
+
+Linear regression                               Number of obs     =  5,628,805
+                                                F(17, 5628787)    =   39900.61
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.1078
+                                                Root MSE          =      72573
+
+-------------------------------------------------------------------------------------
+                    |               Robust
+            incwage | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+--------------------+----------------------------------------------------------------
+                age |   8932.533   21.19214   421.50   0.000     8890.997    8974.069
+                    |
+        c.age#c.age |  -94.57555   .2660689  -355.46   0.000    -95.09703   -94.05406
+                    |
+               race |
+Non-Hispanic White  |   10317.55   114.2422    90.31   0.000     10093.64    10541.46
+  African American  |   -3623.62   138.7388   -26.12   0.000    -3895.543   -3351.696
+          Hispanic  |  -3763.722   160.8425   -23.40   0.000    -4078.967   -3448.476
+             Asian  |   10528.11   146.5449    71.84   0.000     10240.89    10815.33
+                    |
+                sex |
+            Female  |  -35204.07   63.44163  -554.90   0.000    -35328.42   -35079.73
+                    |
+               year |
+              2010  |  -1013.236   130.1922    -7.78   0.000    -1268.408   -758.0636
+              2011  |  -529.7122   133.0675    -3.98   0.000    -790.5197   -268.9047
+              2012  |   1405.024   133.4525    10.53   0.000     1143.461    1666.586
+              2013  |   3571.157   136.6065    26.14   0.000     3303.413    3838.901
+              2014  |   4847.428   137.4369    35.27   0.000     4578.057      5116.8
+              2015  |   7203.549   140.0379    51.44   0.000      6929.08    7478.019
+              2016  |    9349.39     140.78    66.41   0.000     9073.466    9625.314
+              2017  |   11233.56     141.36    79.47   0.000      10956.5    11510.62
+              2018  |   13711.98   144.0518    95.19   0.000     13429.65    13994.32
+              2019  |   16489.13   145.0559   113.67   0.000     16204.82    16773.43
+                    |
+              _cons |  -127996.3   413.1732  -309.79   0.000    -128806.1   -127186.5
+-------------------------------------------------------------------------------------
+
+. reg log1pwage `covars', r
+
+Linear regression                               Number of obs     =  5,628,805
+                                                F(17, 5628787)    =   13590.39
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0379
+                                                Root MSE          =     3.8522
+
+-------------------------------------------------------------------------------------
+                    |               Robust
+          log1pwage | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+--------------------+----------------------------------------------------------------
+                age |   .2735094   .0012575   217.51   0.000     .2710448     .275974
+                    |
+        c.age#c.age |  -.0034921   .0000154  -226.04   0.000    -.0035224   -.0034618
+                    |
+               race |
+Non-Hispanic White  |   .4052774   .0069294    58.49   0.000      .391696    .4188588
+  African American  |   .4027114   .0090838    44.33   0.000     .3849075    .4205152
+          Hispanic  |   .0610921   .0109546     5.58   0.000     .0396216    .0825626
+             Asian  |   -.193472   .0087515   -22.11   0.000    -.2106246   -.1763195
+                    |
+                sex |
+            Female  |  -1.214305   .0032248  -376.55   0.000    -1.220626   -1.207985
+                    |
+               year |
+              2010  |  -.0771193   .0078942    -9.77   0.000    -.0925916    -.061647
+              2011  |  -.1033172   .0080142   -12.89   0.000    -.1190248   -.0876096
+              2012  |  -.0315808   .0079212    -3.99   0.000     -.047106   -.0160556
+              2013  |    .021258   .0078008     2.73   0.006     .0059687    .0365474
+              2014  |   .0539026   .0077861     6.92   0.000     .0386421    .0691632
+              2015  |   .1211285   .0077244    15.68   0.000     .1059889    .1362682
+              2016  |   .1854379    .007649    24.24   0.000     .1704462    .2004296
+              2017  |   .2339948   .0075793    30.87   0.000     .2191396    .2488499
+              2018  |   .3037312   .0075099    40.44   0.000     .2890122    .3184502
+              2019  |   .3776548    .007442    50.75   0.000     .3630688    .3922409
+                    |
+              _cons |   4.548325   .0258925   175.66   0.000     4.497577    4.599074
+-------------------------------------------------------------------------------------
+
+. predict log1pwage_hat, xb
+
+. gen eps = incwage - (exp(log1pwage_hat)-1)
+
+. sum eps, d
+
+                             eps
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%    -27852.78       -43764.9
+ 5%     -11880.3       -43764.9
+10%    -7633.768       -43764.9       Obs           5,628,805
+25%     4827.355       -43764.9       Sum of wgt.   5,628,805
+
+50%     34876.61                      Mean           50655.13
+                        Largest       Std. dev.      75129.54
+75%     68271.63       731313.5
+90%     114883.9         732296       Variance       5.64e+09
+95%     164142.6       732875.4       Skewness       3.346788
+99%     410962.1       733530.4       Kurtosis       18.70786
+
+. 
+. reg eps i.cipH, r
+
+Linear regression                               Number of obs     =  5,628,805
+                                                F(30, 5628774)    =    8191.76
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0336
+                                                Root MSE          =      73858
+
+----------------------------------------------------------------------------------------------------------------------------------
+                                                                 |               Robust
+                                                             eps | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-----------------------------------------------------------------+----------------------------------------------------------------
+                                                            cipH |
+                            Environmental and Natural Resources  |  -426.4672   374.6456    -1.14   0.255    -1160.759    307.8249
+                                                   Architecture  |    6740.56   412.4135    16.34   0.000     5932.244    7548.876
+                                  Area, Ethnic, and Civ Studies  |   7583.006    605.706    12.52   0.000     6395.843    8770.168
+                                   Communications and Comm Tech  |     1795.1   274.4727     6.54   0.000     1257.144    2333.057
+                              Computer and Information Sciences  |    23066.7   295.1922    78.14   0.000     22488.13    23645.26
+                          Education Administration and Teaching  |  -6298.233    248.161   -25.38   0.000     -6784.62   -5811.847
+                                                    Engineering  |   36769.07   276.5654   132.95   0.000     36227.02    37311.13
+                                       Engineering Technologies  |   15505.86   405.3688    38.25   0.000     14711.35    16300.37
+                              Linguistics and Foreign Languages  |   1241.142   372.8677     3.33   0.001     510.3341    1971.949
+                                   Family and Consumer Sciences  |   -9597.79   314.7539   -30.49   0.000     -10214.7   -8980.883
+                                                            Law  |   2518.057   706.0489     3.57   0.000     1134.226    3901.888
+                                    English Lang, Lit, and Comp  |   2400.102   296.7235     8.09   0.000     1818.534    2981.669
+                      Liberal Arts and Humanities (and Lib Sci)  |  -1330.811   329.0393    -4.04   0.000    -1975.716   -685.9054
+                                            Biological Sciences  |   28855.92   308.5129    93.53   0.000     28251.25     29460.6
+                                     Mathematics and Statistics  |   24519.66   401.7337    61.03   0.000     23732.27    25307.04
+Interdisc and Mulit-Disc Studies (and military and cosmetology)  |   860.4942    366.445     2.35   0.019      142.275    1578.713
+                                  Physicall Fitness and Leisure  |  -8112.213   319.9799   -25.35   0.000    -8739.362   -7485.064
+                               Philosophy and Religious Studies  |   3020.403   483.7715     6.24   0.000     2072.228    3968.577
+                               Theology and Religious Vocations  |  -17899.68    336.807   -53.15   0.000    -18559.81   -17239.55
+                             Physical Sciences and Technologies  |   27230.07   335.1815    81.24   0.000     26573.12    27887.01
+                                                     Psychology  |   -482.087   269.0069    -1.79   0.073    -1009.331    45.15705
+                           Criminal Justice and Fire Protection  |  -2957.291   286.3439   -10.33   0.000    -3518.515   -2396.067
+                        Public Affairs, Policy, and Social Work  |  -4688.375   301.5816   -15.55   0.000    -5279.464   -4097.285
+                                                Social Sciences  |   19529.35   282.3453    69.17   0.000     18975.96    20082.74
+                          Construction/Mechanic/Production Tech  |   12550.48   667.9776    18.79   0.000     11241.27    13859.69
+                       Transportation Sciences and Technologies  |   22218.07   673.0253    33.01   0.000     20898.97    23537.18
+                                                      Fine Arts  |   -10856.3   265.8021   -40.84   0.000    -11377.26   -10335.34
+                       Medical and Health Sciences and Services  |   13003.95   259.8769    50.04   0.000     12494.61     13513.3
+                                                       Business  |    17468.3   254.3443    68.68   0.000     16969.79     17966.8
+                                                        History  |   11768.34   355.5646    33.10   0.000     11071.44    12465.23
+                                                                 |
+                                                           _cons |   39238.93   242.8777   161.56   0.000      38762.9    39714.96
+----------------------------------------------------------------------------------------------------------------------------------
+
+. 
+. * average residuals by major
+. tempfile eps_by_major
+
+. preserve
+
+.     collapse (mean) mu = eps (sd) sd = eps (mean) raw_mean = incwage, by(cipH)
+
+.     gen coef_var = sd/mu
+
+.     gsort -mu
+
+.     l, sep(0)
+
+     +----------------------------------------------------------------------------------------------------------------+
+     |                                                            cipH         mu         sd      raw_mean   coef_var |
+     |----------------------------------------------------------------------------------------------------------------|
+  1. |                                                     Engineering   76008.01   87141.92   93613.68827   1.146483 |
+  2. |                                             Biological Sciences   68094.85   102192.4    81161.9578   1.500736 |
+  3. |                              Physical Sciences and Technologies      66469    92744.5   81196.72379   1.395305 |
+  4. |                                      Mathematics and Statistics   63758.59   88228.88   77686.45226   1.383796 |
+  5. |                               Computer and Information Sciences   62305.63   74316.15   79828.63915   1.192768 |
+  6. |                        Transportation Sciences and Technologies      61457   78174.69   82225.82683   1.272022 |
+  7. |                                                 Social Sciences   58768.28   93157.03   73033.65961   1.585158 |
+  8. |                                                        Business   56707.23   81840.84   70995.04968   1.443217 |
+  9. |                                        Engineering Technologies   54744.79   66730.66   73183.61059   1.218941 |
+ 10. |                        Medical and Health Sciences and Services   52242.89   59399.49   61059.56602   1.136987 |
+ 11. |                           Construction/Mechanic/Production Tech   51789.41   70540.32   73497.84545   1.362061 |
+ 12. |                                                         History   51007.27   86845.48   67077.88378    1.70261 |
+ 13. |                                   Area, Ethnic, and Civ Studies   46821.94   78009.07    58154.3895    1.66608 |
+ 14. |                                                    Architecture   45979.49   67972.09   61548.48457   1.478313 |
+ 15. |                                Philosophy and Religious Studies   42259.34   82137.42   58869.60977   1.943652 |
+ 16. |                                                             Law   41756.99   66153.09   53534.65247    1.58424 |
+ 17. |                                     English Lang, Lit, and Comp   41639.03   70659.75   53480.23641   1.696959 |
+ 18. |                                    Communications and Comm Tech   41034.03    64207.6   54221.04425    1.56474 |
+ 19. |                               Linguistics and Foreign Languages   40480.07   67728.21   50948.76292   1.673125 |
+ 20. | Interdisc and Mulit-Disc Studies (and military and cosmetology)   40099.43   64721.46   51805.06701   1.614025 |
+ 21. |                                                     Agriculture   39238.93   62690.04   54672.86155   1.597649 |
+ 22. |                             Environmental and Natural Resources   38812.46   57633.83   55003.48727   1.484931 |
+ 23. |                                                      Psychology   38756.84   61756.94   49439.59096   1.593446 |
+ 24. |                       Liberal Arts and Humanities (and Lib Sci)   37908.12   62776.04   49885.17306   1.656005 |
+ 25. |                            Criminal Justice and Fire Protection   36281.64   49152.79   52591.07952   1.354756 |
+ 26. |                         Public Affairs, Policy, and Social Work   34550.56   49902.23   43955.14945   1.444325 |
+ 27. |                           Education Administration and Teaching    32940.7   39276.02   42485.67137   1.192325 |
+ 28. |                                   Physicall Fitness and Leisure   31126.72   51325.88   46466.11084   1.648933 |
+ 29. |                                    Family and Consumer Sciences   29641.14   43855.78   37324.10724   1.479558 |
+ 30. |                                                       Fine Arts   28382.63   53322.95   40939.28584   1.878717 |
+ 31. |                                Theology and Religious Vocations   21339.25   43420.68    38472.9295    2.03478 |
+     +----------------------------------------------------------------------------------------------------------------+
+
+.     save `eps_by_major', replace
+(file C:\Users\ADMIN~1.DES\AppData\Local\Temp\ST_60c_000001.tmp not found)
+file C:\Users\ADMIN~1.DES\AppData\Local\Temp\ST_60c_000001.tmp saved as .dta format
+
+. restore
+
+. 
+. merge m:1 cipH using `eps_by_major', keep(match) nogen
+(label vlcipH already defined)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                         5,628,805  
+    -----------------------------------------
+
+. 
+. *-------------------------------------------------------------------------------
+. * Extensions:
+. * 1. do analysis in logs
+. * 2. drop qincwage>0 instances
+. * 3. focus on full-time, full-year workers
+. * 4. add foreign_born and race/sex/survey-year interactions
+. *-------------------------------------------------------------------------------
+. 
+. reg logwage i.cipH `covars' foreign_born if ftfy & !bad_wage, r
+
+Linear regression                               Number of obs     =  3,147,577
+                                                F(48, 3147528)    =   19520.32
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.2084
+                                                Root MSE          =     .63815
+
+----------------------------------------------------------------------------------------------------------------------------------
+                                                                 |               Robust
+                                                         logwage | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-----------------------------------------------------------------+----------------------------------------------------------------
+                                                            cipH |
+                            Environmental and Natural Resources  |   .0338856   .0050542     6.70   0.000     .0239795    .0437917
+                                                   Architecture  |   .1698375   .0053354    31.83   0.000     .1593802    .1802947
+                                  Area, Ethnic, and Civ Studies  |   .2240674   .0078281    28.62   0.000     .2087247    .2394101
+                                   Communications and Comm Tech  |   .1227092   .0038832    31.60   0.000     .1150982    .1303202
+                              Computer and Information Sciences  |   .3595972   .0038791    92.70   0.000     .3519943    .3672002
+                          Education Administration and Teaching  |  -.0726646   .0036049   -20.16   0.000      -.07973   -.0655992
+                                                    Engineering  |   .4594712   .0036681   125.26   0.000     .4522819    .4666605
+                                       Engineering Technologies  |   .1946495   .0049751    39.13   0.000     .1848985    .2044004
+                              Linguistics and Foreign Languages  |   .1428261    .005374    26.58   0.000     .1322933    .1533588
+                                   Family and Consumer Sciences  |  -.0386403   .0052465    -7.36   0.000    -.0489234   -.0283573
+                                                            Law  |   .1031992   .0096386    10.71   0.000     .0843078    .1220906
+                                    English Lang, Lit, and Comp  |   .1172921   .0041636    28.17   0.000     .1091315    .1254526
+                      Liberal Arts and Humanities (and Lib Sci)  |   .0261565   .0048046     5.44   0.000     .0167397    .0355733
+                                            Biological Sciences  |   .3848764   .0039478    97.49   0.000     .3771389    .3926139
+                                     Mathematics and Statistics  |   .3676854   .0047125    78.02   0.000      .358449    .3769218
+Interdisc and Mulit-Disc Studies (and military and cosmetology)  |   .1228153   .0051435    23.88   0.000     .1127343    .1328963
+                                  Physicall Fitness and Leisure  |   .0020137   .0047268     0.43   0.670    -.0072507    .0112781
+                               Philosophy and Religious Studies  |   .0609694   .0064412     9.47   0.000     .0483448     .073594
+                               Theology and Religious Vocations  |  -.3592444   .0057611   -62.36   0.000    -.3705358   -.3479529
+                             Physical Sciences and Technologies  |   .3396987   .0041509    81.84   0.000     .3315631    .3478342
+                                                     Psychology  |   .0974525   .0038619    25.23   0.000     .0898832    .1050217
+                           Criminal Justice and Fire Protection  |   .0227279   .0040869     5.56   0.000     .0147177    .0307382
+                        Public Affairs, Policy, and Social Work  |  -.0221778   .0044363    -5.00   0.000    -.0308727   -.0134828
+                                                Social Sciences  |   .2956066   .0037875    78.05   0.000     .2881832      .30303
+                          Construction/Mechanic/Production Tech  |   .2184313   .0074571    29.29   0.000     .2038157    .2330469
+                       Transportation Sciences and Technologies  |   .2303056   .0071553    32.19   0.000     .2162816    .2443297
+                                                      Fine Arts  |  -.0533089   .0040251   -13.24   0.000     -.061198   -.0454199
+                       Medical and Health Sciences and Services  |   .2890926   .0036882    78.38   0.000     .2818639    .2963213
+                                                       Business  |   .2386188   .0035703    66.83   0.000     .2316211    .2456165
+                                                        History  |   .1609635   .0045274    35.55   0.000       .15209     .169837
+                                                                 |
+                                                             age |   .1170892    .000298   392.91   0.000     .1165051    .1176732
+                                                                 |
+                                                     c.age#c.age |  -.0011904   3.61e-06  -329.85   0.000    -.0011975   -.0011834
+                                                                 |
+                                                            race |
+                                             Non-Hispanic White  |   .1152515    .001671    68.97   0.000     .1119763    .1185266
+                                               African American  |   -.088069   .0021077   -41.78   0.000       -.0922   -.0839379
+                                                       Hispanic  |  -.0527505   .0024839   -21.24   0.000    -.0576189    -.047882
+                                                          Asian  |   .1397439   .0020943    66.73   0.000     .1356391    .1438487
+                                                                 |
+                                                             sex |
+                                                         Female  |  -.2206877    .000798  -276.57   0.000    -.2222517   -.2191238
+                                                                 |
+                                                            year |
+                                                           2010  |  -.0019703   .0016959    -1.16   0.245    -.0052942    .0013536
+                                                           2011  |  -.0002062   .0017227    -0.12   0.905    -.0035826    .0031701
+                                                           2012  |    .019648   .0017056    11.52   0.000     .0163052    .0229908
+                                                           2013  |   .0382531   .0017104    22.36   0.000     .0349007    .0416054
+                                                           2014  |   .0546487   .0017001    32.14   0.000     .0513166    .0579808
+                                                           2015  |   .0752857   .0016936    44.45   0.000     .0719664     .078605
+                                                           2016  |   .1017861   .0016759    60.74   0.000     .0985014    .1050708
+                                                           2017  |   .1227835   .0016598    73.97   0.000     .1195302    .1260367
+                                                           2018  |   .1480498   .0016577    89.31   0.000     .1448007    .1512988
+                                                           2019  |   .1765452   .0016447   107.34   0.000     .1733217    .1797687
+                                                                 |
+                                                    foreign_born |  -.0662087   .0013454   -49.21   0.000    -.0688456   -.0635718
+                                                           _cons |   8.194814   .0070342  1164.99   0.000     8.181027    8.208601
+----------------------------------------------------------------------------------------------------------------------------------
+
+. 
+. 
+. *-------------------------------------------------------------------------------
+. * Extensions:
+. * do everything in a likelihood-based model
+. *-------------------------------------------------------------------------------
+. global dumbo cipH
+
+. capture program drop normal
+
+. program normal
+  1.         version 13.1
+  2.         args lnf Xb sigma1 sigma2 sigma3 sigma4 sigma5 sigma6 sigma7 sigma8 sigma9 sigma10 sigma11 sigma12 sigma13 sigma14 sigma15 sigma16 sigm
+> a17 sigma18 sigma19 sigma20 sigma21 sigma22 sigma23 sigma24 sigma25 sigma26 sigma27 sigma28 sigma29 sigma30 sigma31
+  3.         quietly replace `lnf'=( ${dumbo}==1 )*ln(normalden(${ML_y1}, `Xb', `sigma1' ))+ /// 
+>                           ( ${dumbo}==2 )*ln(normalden(${ML_y1}, `Xb', `sigma2' ))+ ///
+>                           ( ${dumbo}==3 )*ln(normalden(${ML_y1}, `Xb', `sigma3' ))+ ///
+>                           ( ${dumbo}==4 )*ln(normalden(${ML_y1}, `Xb', `sigma4' ))+ ///
+>                           ( ${dumbo}==5 )*ln(normalden(${ML_y1}, `Xb', `sigma5' ))+ ///
+>                           ( ${dumbo}==6 )*ln(normalden(${ML_y1}, `Xb', `sigma6' ))+ ///
+>                           ( ${dumbo}==7 )*ln(normalden(${ML_y1}, `Xb', `sigma7' ))+ ///
+>                           ( ${dumbo}==8 )*ln(normalden(${ML_y1}, `Xb', `sigma8' ))+ ///
+>                           ( ${dumbo}==9 )*ln(normalden(${ML_y1}, `Xb', `sigma9' ))+ ///
+>                           ( ${dumbo}==10)*ln(normalden(${ML_y1}, `Xb', `sigma10'))+ ///
+>                           ( ${dumbo}==11)*ln(normalden(${ML_y1}, `Xb', `sigma11'))+ ///
+>                           ( ${dumbo}==12)*ln(normalden(${ML_y1}, `Xb', `sigma12'))+ ///
+>                           ( ${dumbo}==13)*ln(normalden(${ML_y1}, `Xb', `sigma13'))+ ///
+>                           ( ${dumbo}==14)*ln(normalden(${ML_y1}, `Xb', `sigma14'))+ ///
+>                           ( ${dumbo}==15)*ln(normalden(${ML_y1}, `Xb', `sigma15'))+ ///
+>                           ( ${dumbo}==16)*ln(normalden(${ML_y1}, `Xb', `sigma16'))+ ///
+>                           ( ${dumbo}==17)*ln(normalden(${ML_y1}, `Xb', `sigma17'))+ ///
+>                           ( ${dumbo}==18)*ln(normalden(${ML_y1}, `Xb', `sigma18'))+ ///
+>                           ( ${dumbo}==19)*ln(normalden(${ML_y1}, `Xb', `sigma19'))+ ///
+>                           ( ${dumbo}==20)*ln(normalden(${ML_y1}, `Xb', `sigma20'))+ ///
+>                           ( ${dumbo}==21)*ln(normalden(${ML_y1}, `Xb', `sigma21'))+ ///
+>                           ( ${dumbo}==22)*ln(normalden(${ML_y1}, `Xb', `sigma22'))+ ///
+>                           ( ${dumbo}==23)*ln(normalden(${ML_y1}, `Xb', `sigma23'))+ ///
+>                           ( ${dumbo}==24)*ln(normalden(${ML_y1}, `Xb', `sigma24'))+ ///
+>                           ( ${dumbo}==25)*ln(normalden(${ML_y1}, `Xb', `sigma25'))+ ///
+>                           ( ${dumbo}==26)*ln(normalden(${ML_y1}, `Xb', `sigma26'))+ ///
+>                           ( ${dumbo}==27)*ln(normalden(${ML_y1}, `Xb', `sigma27'))+ ///
+>                           ( ${dumbo}==28)*ln(normalden(${ML_y1}, `Xb', `sigma28'))+ ///
+>                           ( ${dumbo}==29)*ln(normalden(${ML_y1}, `Xb', `sigma29'))+ ///
+>                           ( ${dumbo}==30)*ln(normalden(${ML_y1}, `Xb', `sigma30'))+ ///
+>                           ( ${dumbo}==31)*ln(normalden(${ML_y1}, `Xb', `sigma31'))
+  4. end
+
+. 
+. ml model lf normal (logwage = i.cipH `covars' foreign_born ) ///
+>             /sigma1 /sigma2 /sigma3 /sigma4 /sigma5 /sigma6 /sigma7 /sigma8 /sigma9 /sigma10 /sigma11 /sigma12 /sigma13 /sigma14 /sigma15 /sigma16
+>  /sigma17 /sigma18 /sigma19 /sigma20 /sigma21 /sigma22 /sigma23 /sigma24 /sigma25 /sigma26 /sigma27 /sigma28 /sigma29 /sigma30 /sigma31 ///
+>             if ftfy & !bad_wage
+
+. ml max
+
+Initial:      Log likelihood =     -<inf>  (could not be evaluated)
+Feasible:     Log likelihood = -7.149e+08
+Rescale:      Log likelihood = -9690711.3
+Rescale eq:   Log likelihood = -8268214.5
+Iteration 0:  Log likelihood = -8268214.5  (not concave)
+Iteration 1:  Log likelihood = -6159770.9  (not concave)
+Iteration 2:  Log likelihood = -5904388.4  (not concave)
+Iteration 3:  Log likelihood =   -5864125  (not concave)
+Iteration 4:  Log likelihood = -5338423.3  (not concave)
+Iteration 5:  Log likelihood = -5152132.7  (not concave)
+Iteration 6:  Log likelihood = -5012209.8  (not concave)
+Iteration 7:  Log likelihood = -4570410.9  (not concave)
+--Break--
+r(1);
+
+end of do-file
+
+--Break--
+r(1);
+
+. ml model lf normal (logwage = i.cipH `covars' foreign_born ) /sigma1 /sigma2 /sigma3 /sigma4 /sigma5 /sigma6 /sigma7 /sigma8 /sigma9 /sigma10 /sig
+> ma11 /sigma12 /sigma13 /sigma14 /sigma15 /sigma16   /sigma17 /sigma18 /sigma19 /sigma20 /sigma21 /sigma22 /sigma23 /sigma24 /sigma25 /sigma26 /sig
+> ma27 /sigma28 /sigma29 /sigma30 /sigma31 if ftfy & !bad_wage, iterate(10) difficult
+option iterate() not allowed
+r(198);
+
+. ml max, iterate(10) difficult
+you must issue -ml model- first
+r(198);
+
+. ml model lf normal (logwage = i.cipH `covars' foreign_born ) /sigma1 /sigma2 /sigma3 /sigma4 /sigma5 /sigma6 /sigma7 /sigma8 /sigma9 /sigma10 /sig
+> ma11 /sigma12 /sigma13 /sigma14 /sigma15 /sigma16   /sigma17 /sigma18 /sigma19 /sigma20 /sigma21 /sigma22 /sigma23 /sigma24 /sigma25 /sigma26 /sig
+> ma27 /sigma28 /sigma29 /sigma30 /sigma31 if ftfy & !bad_wage
+
+. ml max, iterate(10) difficult
+
+Initial:      Log likelihood =     -<inf>  (could not be evaluated)
+Feasible:     Log likelihood = -7.149e+08
+Rescale:      Log likelihood = -9690711.3
+Rescale eq:   Log likelihood = -8268214.5
+Iteration 0:  Log likelihood = -8268214.5  (not concave)
+Iteration 1:  Log likelihood = -6803449.9  (not concave)
+Iteration 2:  Log likelihood = -6116906.2  (not concave)
+Iteration 3:  Log likelihood = -5484523.6  (not concave)
+Iteration 4:  Log likelihood = -5143500.3  (not concave)
+Iteration 5:  Log likelihood = -4820505.2  (not concave)
+Iteration 6:  Log likelihood = -4544659.5  (not concave)
+Iteration 7:  Log likelihood = -4298568.3  (not concave)
+Iteration 8:  Log likelihood = -4208932.2  (not concave)
+Iteration 9:  Log likelihood =   -4053126  (not concave)
+Iteration 10: Log likelihood = -3987714.1  (not concave)
+convergence not achieved
+
+                                                     Number of obs = 3,147,577
+                                                     Wald chi2(23) =         .
+Log likelihood = -3987714.1                          Prob > chi2   =         .
+
+----------------------------------------------------------------------------------------------------------------------------------
+                                                         logwage | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-----------------------------------------------------------------+----------------------------------------------------------------
+                                                            cipH |
+                            Environmental and Natural Resources  |  -3.074929   .1526433   -20.14   0.000    -3.374104   -2.775754
+                                                   Architecture  |  -3.139774          .        .       .            .           .
+                                  Area, Ethnic, and Civ Studies  |  -4.739623          .        .       .            .           .
+                                   Communications and Comm Tech  |  -1.863982   .1494825   -12.47   0.000    -2.156962   -1.571002
+                              Computer and Information Sciences  |  -1.517421   .1494575   -10.15   0.000    -1.810352    -1.22449
+                          Education Administration and Teaching  |  -2.040825   .1494739   -13.65   0.000    -2.333788   -1.747861
+                                                    Engineering  |  -1.377154   .1494485    -9.21   0.000    -1.670068    -1.08424
+                                       Engineering Technologies  |  -2.781448          .        .       .            .           .
+                              Linguistics and Foreign Languages  |  -2.929161          .        .       .            .           .
+                                   Family and Consumer Sciences  |  -3.428832          .        .       .            .           .
+                                                            Law  |  -5.946641   .1718923   -34.60   0.000    -6.283544   -5.609738
+                                    English Lang, Lit, and Comp  |  -1.823591   .1495381   -12.19   0.000    -2.116681   -1.530502
+                      Liberal Arts and Humanities (and Lib Sci)  |  -2.333809   .1509458   -15.46   0.000    -2.629657    -2.03796
+                                            Biological Sciences  |  -1.550007   .1494716   -10.37   0.000    -1.842966   -1.257048
+                                     Mathematics and Statistics  |  -2.155202   .1505134   -14.32   0.000    -2.450203   -1.860201
+Interdisc and Mulit-Disc Studies (and military and cosmetology)  |   -2.79077          .        .       .            .           .
+                                  Physicall Fitness and Leisure  |  -2.548895   .1514651   -16.83   0.000    -2.845761   -2.252028
+                               Philosophy and Religious Studies  |  -3.483464          .        .       .            .           .
+                               Theology and Religious Vocations  |  -3.840233   .1547107   -24.82   0.000    -4.143461   -3.537006
+                             Physical Sciences and Technologies  |  -1.592028   .1494731   -10.65   0.000     -1.88499   -1.299066
+                                                     Psychology  |  -1.906078   .1494786   -12.75   0.000    -2.199051   -1.613106
+                           Criminal Justice and Fire Protection  |  -1.896516   .1498343   -12.66   0.000    -2.190186   -1.602847
+                        Public Affairs, Policy, and Social Work  |  -2.220856   .1507271   -14.73   0.000    -2.516276   -1.925437
+                                                Social Sciences  |   -1.63029   .1494727   -10.91   0.000    -1.923251   -1.337328
+                          Construction/Mechanic/Production Tech  |  -4.837634   .1615956   -29.94   0.000    -5.154356   -4.520913
+                       Transportation Sciences and Technologies  |   -4.56215          .        .       .            .           .
+                                                      Fine Arts  |  -2.029487   .1494807   -13.58   0.000    -2.322464    -1.73651
+                       Medical and Health Sciences and Services  |   -1.70638   .1494639   -11.42   0.000    -1.999323   -1.413436
+                                                       Business  |  -1.673131   .1494661   -11.19   0.000    -1.966079   -1.380183
+                                                        History  |  -1.862116   .1498663   -12.43   0.000    -2.155848   -1.568383
+                                                                 |
+                                                    foreign_born |  -.0448387   .0011587   -38.70   0.000    -.0471097   -.0425677
+                                                           _cons |   12.86539   .1494785    86.07   0.000     12.57242    13.15836
+-----------------------------------------------------------------+----------------------------------------------------------------
+                                                         /sigma1 |   1.997646   .1353855    14.76   0.000     1.732295    2.262996
+                                                         /sigma2 |   4.836367          .        .       .            .           .
+                                                         /sigma3 |   4.868431          .        .       .            .           .
+                                                         /sigma4 |   5.665973          .        .       .            .           .
+                                                         /sigma5 |   .6972271   .0013507   516.18   0.000     .6945797    .6998745
+                                                         /sigma6 |   .6424812   .0012911   497.60   0.000     .6399506    .6450119
+                                                         /sigma7 |   .5182928   .0006684   775.43   0.000     .5169828    .5196029
+                                                         /sigma8 |   .6487101   .0008534   760.17   0.000     .6470375    .6503827
+                                                         /sigma9 |   4.571684          .        .       .            .           .
+                                                        /sigma10 |   4.739551          .        .       .            .           .
+                                                        /sigma11 |     5.1497          .        .       .            .           .
+                                                        /sigma12 |   6.117496          .        .       .            .           .
+                                                        /sigma13 |   1.343937          .        .       .            .           .
+                                                        /sigma14 |   4.116852          .        .       .            .           .
+                                                        /sigma15 |   .8314913   .0014666   566.96   0.000     .8286169    .8343658
+                                                        /sigma16 |   3.720584          .        .       .            .           .
+                                                        /sigma17 |   4.631964          .        .       .            .           .
+                                                        /sigma18 |   4.439068          .        .       .            .           .
+                                                        /sigma19 |   5.078376          .        .       .            .           .
+                                                        /sigma20 |   5.419687          .        .       .            .           .
+                                                        /sigma21 |   .7760152   .0018405   421.64   0.000     .7724079    .7796224
+                                                        /sigma22 |   .6843074   .0012829   533.42   0.000      .681793    .6868217
+                                                        /sigma23 |   2.649553          .        .       .            .           .
+                                                        /sigma24 |   3.969829          .        .       .            .           .
+                                                        /sigma25 |   .7897451   .0011518   685.64   0.000     .7874876    .7920027
+                                                        /sigma26 |   5.680473          .        .       .            .           .
+                                                        /sigma27 |   5.577843          .        .       .            .           .
+                                                        /sigma28 |   .6688879   .0013535   494.18   0.000     .6662351    .6715408
+                                                        /sigma29 |   .5897517   .0008795   670.59   0.000      .588028    .5914754
+                                                        /sigma30 |   .7248708   .0006114  1185.55   0.000     .7236725    .7260692
+                                                        /sigma31 |   2.726608          .        .       .            .           .
+----------------------------------------------------------------------------------------------------------------------------------
+Warning: Convergence not achieved.
+

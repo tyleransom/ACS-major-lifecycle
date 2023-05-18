@@ -1,0 +1,1020 @@
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\Admin\Dropbox\Conferences\SFS-Cavalcade-May2023\src\analysis.log
+  log type:  text
+ opened on:  18 May 2023, 11:25:12
+
+. 
+. global datpath "../data/"
+
+. 
+. * load data
+. use ${datpath}acs0919cleaned.dta, clear
+
+. 
+. * generate missing indicator for wage
+. gen mi_wage = incwage==0
+
+. tab sex, sum(mi_wage)
+
+            |         Summary of mi_wage
+        Sex |        Mean   Std. dev.       Freq.
+------------+------------------------------------
+       Male |   .10554778   .30725801   2,557,363
+     Female |   .17834294   .38280123   3,071,442
+------------+------------------------------------
+      Total |   .14526956   .35237244   5,628,805
+
+. 
+. * how often are wages imputed?
+. sum bad_wage, d
+
+                          bad_wage
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs           5,628,805
+25%            0              0       Sum of wgt.   5,628,805
+
+50%            0                      Mean           .1240871
+                        Largest       Std. dev.      .3296809
+75%            0              1
+90%            1              1       Variance       .1086895
+95%            1              1       Skewness       2.280465
+99%            1              1       Kurtosis       6.200522
+
+. 
+. * what fraction of sample are FTFY workers?
+. sum ftfy, d
+
+                            ftfy
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs           5,628,805
+25%            0              0       Sum of wgt.   5,628,805
+
+50%            1                      Mean           .6613397
+                        Largest       Std. dev.      .4732542
+75%            1              1
+90%            1              1       Variance       .2239696
+95%            1              1       Skewness      -.6818309
+99%            1              1       Kurtosis       1.464893
+
+. 
+. * generate top 15 most frequent majors
+. tempfile top15
+
+. preserve
+
+.     keep cipH incwage ftfy bad_wage
+
+.     keep if ftfy & !bad_wage
+(2,378,641 observations deleted)
+
+.     collapse (count) freqcip = incwage, by(cipH)
+
+.     gsort -freqcip
+
+.     gen top15 = _n<=15
+
+.     save `top15', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_000001.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_000001.tmp saved as .dta format
+
+. restore
+
+. merge m:1 cipH using `top15', keep(match master) nogen
+(label vlcipH already defined)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                         5,628,805  
+    -----------------------------------------
+
+. tab top15, mi
+
+      top15 |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |    702,066       12.47       12.47
+          1 |  4,926,739       87.53      100.00
+------------+-----------------------------------
+      Total |  5,628,805      100.00
+
+. 
+. 
+. *-------------------------------------------------------------------------------
+. * Replication
+. *-------------------------------------------------------------------------------
+. 
+. * wage variables
+. gen log1pwage = log(1+incwage)
+
+. gen logwage   = log(incwage)
+(817,694 missing values generated)
+
+. 
+. * race variable
+. ren race race_disag
+
+. generat race = .
+(5,628,805 missing values generated)
+
+. replace race = 1 if hispan==0 & race_disag==1
+(4,169,078 real changes made)
+
+. replace race = 2 if hispan==0 & race_disag==2
+(358,549 real changes made)
+
+. replace race = 3 if hispan==1
+(190,814 real changes made)
+
+. replace race = 4 if hispan==0 & inrange(race_disag,4,6)
+(561,174 real changes made)
+
+. tab race, mi
+
+       race |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,169,078       74.07       74.07
+          2 |    358,549        6.37       80.44
+          3 |    190,814        3.39       83.83
+          4 |    561,174        9.97       93.80
+          . |    349,190        6.20      100.00
+------------+-----------------------------------
+      Total |  5,628,805      100.00
+
+. replace race = 5 if mi(race)
+(349,190 real changes made)
+
+. 
+. lab def vlrace 1 "Non-Hispanic White" 2 "African American" 3 "Hispanic" 4 "Asian" 5 "Other"
+
+. lab val race vlrace
+
+. tab race, mi
+
+              race |      Freq.     Percent        Cum.
+-------------------+-----------------------------------
+Non-Hispanic White |  4,169,078       74.07       74.07
+  African American |    358,549        6.37       80.44
+          Hispanic |    190,814        3.39       83.83
+             Asian |    561,174        9.97       93.80
+             Other |    349,190        6.20      100.00
+-------------------+-----------------------------------
+             Total |  5,628,805      100.00
+
+. 
+. * descriptive statistics
+. sum incwage, d
+
+                   Wage and salary income
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs           5,628,805
+25%        16000              0       Sum of wgt.   5,628,805
+
+50%        48000                      Mean            63955.8
+                        Largest       Std. dev.      76831.06
+75%        82000         736000
+90%       130000         736000       Variance       5.90e+09
+95%       180000         736000       Skewness       3.281554
+99%       427000         736000       Kurtosis        18.1404
+
+. sum log1pwage, d
+
+                          log1pwage
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs           5,628,805
+25%     9.680407              0       Sum of wgt.   5,628,805
+
+50%     10.77898                      Mean           9.217124
+                        Largest       Std. dev.      3.927428
+75%     11.31449       13.50899
+90%      11.7753       13.50899       Variance       15.42469
+95%     12.10072       13.50899       Skewness      -1.769595
+99%     12.96454       13.50899       Kurtosis       4.485913
+
+. 
+. /*
+> * initial mincer regressions
+> local covars c.age##c.age b5.race b1.sex i.year 
+> reg incwage `covars', r
+> reg log1pwage `covars', r
+> predict log1pwage_hat, xb
+> gen eps = incwage - (exp(log1pwage_hat)-1)
+> sum eps, d
+> 
+> reg eps i.cipH, r
+> 
+> * average residuals by major
+> tempfile eps_by_major
+> preserve
+>     collapse (mean) mu = eps (sd) sd = eps (mean) raw_mean = incwage, by(cipH)
+>     gen coef_var = sd/mu
+>     gsort -mu
+>     l, sep(0)
+>     save `eps_by_major', replace
+> restore
+> 
+> merge m:1 cipH using `eps_by_major', keep(match) nogen
+> */
+. 
+. 
+. *-------------------------------------------------------------------------------
+. * Graphs: age-earnings profiles by major, age-employment profiles by major
+. * 
+. * Extensions:
+. * 1. do analysis in logs
+. * 2. drop qincwage>0 instances
+. * 3. focus on full-time, full-year workers
+. * 4. add foreign_born and more flexible race/sex/survey-year interactions
+. *-------------------------------------------------------------------------------
+. 
+. reg employed i.cipH              b5.race b1.sex i.year foreign_born, r
+
+Linear regression                               Number of obs     =  5,628,805
+                                                F(46, 5628758)    =    7192.02
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0525
+                                                Root MSE          =     .46127
+
+----------------------------------------------------------------------------------------------------------------------------------
+                                                                 |               Robust
+                                                        employed | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-----------------------------------------------------------------+----------------------------------------------------------------
+                                                            cipH |
+                            Environmental and Natural Resources  |  -.0480936   .0027788   -17.31   0.000    -.0535399   -.0426473
+                                                   Architecture  |  -.0528239   .0027646   -19.11   0.000    -.0582424   -.0474053
+                                  Area, Ethnic, and Civ Studies  |  -.0980813   .0038316   -25.60   0.000     -.105591   -.0905715
+                                   Communications and Comm Tech  |  -.0609247   .0019006   -32.06   0.000    -.0646498   -.0571996
+                              Computer and Information Sciences  |   .0094157   .0019111     4.93   0.000     .0056699    .0131615
+                                                      Education  |  -.0880778   .0017753   -49.61   0.000    -.0915572   -.0845983
+                                                    Engineering  |   .0169678   .0017687     9.59   0.000     .0135013    .0204343
+                                       Engineering Technologies  |    .001676   .0026034     0.64   0.520    -.0034266    .0067786
+                              Linguistics and Foreign Languages  |  -.1222259   .0026314   -46.45   0.000    -.1273835   -.1170684
+                                   Family and Consumer Sciences  |  -.1213138   .0028084   -43.20   0.000    -.1268182   -.1158094
+                                                            Law  |  -.0399278   .0050621    -7.89   0.000    -.0498493   -.0300063
+                                    English Lang, Lit, and Comp  |  -.1026935   .0020265   -50.68   0.000    -.1066654   -.0987216
+                      Liberal Arts and Humanities (and Lib Sci)  |  -.1067863   .0023765   -44.93   0.000    -.1114442   -.1021284
+                                                        Biology  |  -.0586114     .00187   -31.34   0.000    -.0622766   -.0549462
+                                     Mathematics and Statistics  |  -.0571001    .002361   -24.19   0.000    -.0617275   -.0524727
+Interdisc and Mulit-Disc Studies (and military and cosmetology)  |  -.0785227   .0026269   -29.89   0.000    -.0836712   -.0733741
+                                  Physicall Fitness and Leisure  |  -.0966147   .0025369   -38.08   0.000     -.101587   -.0916424
+                               Philosophy and Religious Studies  |  -.1246118   .0029399   -42.39   0.000     -.130374   -.1188497
+                               Theology and Religious Vocations  |  -.1042958   .0029743   -35.07   0.000    -.1101253   -.0984662
+                             Physical Sciences and Technologies  |  -.0338538    .002001   -16.92   0.000    -.0377758   -.0299319
+                                                     Psychology  |  -.0894655   .0018909   -47.31   0.000    -.0931717   -.0857593
+                           Criminal Justice and Fire Protection  |  -.0106927   .0021402    -5.00   0.000    -.0148874    -.006498
+                        Public Affairs, Policy, and Social Work  |  -.0375032   .0023922   -15.68   0.000    -.0421918   -.0328146
+                                                Social Sciences  |   -.052381   .0017978   -29.14   0.000    -.0559046   -.0488574
+                          Construction/Mechanic/Production Tech  |   .0070268   .0038689     1.82   0.069     -.000556    .0146096
+                       Transportation Sciences and Technologies  |  -.0547658   .0039122   -14.00   0.000    -.0624337    -.047098
+                                                      Fine Arts  |  -.1522507   .0019286   -78.94   0.000    -.1560307   -.1484706
+                       Medical and Health Sciences and Services  |   -.030477    .001823   -16.72   0.000      -.03405    -.026904
+                                                       Business  |  -.0006178   .0016987    -0.36   0.716    -.0039472    .0027117
+                                                        History  |  -.0761427   .0021551   -35.33   0.000    -.0803666   -.0719187
+                                                                 |
+                                                            race |
+                                             Non-Hispanic White  |   .0168318   .0008677    19.40   0.000     .0151311    .0185324
+                                               African American  |   .0386677   .0011386    33.96   0.000     .0364361    .0408993
+                                                       Hispanic  |   .0048384   .0013477     3.59   0.000      .002197    .0074799
+                                                          Asian  |  -.0173096   .0010532   -16.44   0.000    -.0193738   -.0152454
+                                                                 |
+                                                             sex |
+                                                         Female  |  -.1715789   .0004226  -405.97   0.000    -.1724072   -.1707505
+                                                                 |
+                                                            year |
+                                                           2010  |  -.0083497   .0009456    -8.83   0.000    -.0102031   -.0064963
+                                                           2011  |  -.0085217    .000956    -8.91   0.000    -.0103955   -.0066479
+                                                           2012  |   .0006721   .0009458     0.71   0.477    -.0011816    .0025259
+                                                           2013  |   .0017632   .0009355     1.88   0.059    -.0000703    .0035966
+                                                           2014  |   .0065896   .0009337     7.06   0.000     .0047597    .0084196
+                                                           2015  |   .0139672    .000927    15.07   0.000     .0121504    .0157841
+                                                           2016  |   .0191501   .0009204    20.81   0.000     .0173461    .0209541
+                                                           2017  |   .0255203   .0009116    27.99   0.000     .0237335     .027307
+                                                           2018  |   .0304762   .0009064    33.62   0.000     .0286997    .0322526
+                                                           2019  |   .0415517   .0008976    46.29   0.000     .0397924     .043311
+                                                                 |
+                                                    foreign_born |  -.0511265   .0006499   -78.67   0.000    -.0524002   -.0498527
+                                                           _cons |   .7829253   .0019661   398.21   0.000     .7790718    .7867788
+----------------------------------------------------------------------------------------------------------------------------------
+
+. local b0 = _b[_cons]
+
+. predict empstatresid, resid
+
+. 
+. 
+. reg logwage i.cipH              b5.race b1.sex i.year foreign_born if ftfy & !bad_wage, r
+
+Linear regression                               Number of obs     =  3,147,577
+                                                F(46, 3147530)    =   10119.28
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.1168
+                                                Root MSE          =     .67408
+
+----------------------------------------------------------------------------------------------------------------------------------
+                                                                 |               Robust
+                                                         logwage | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-----------------------------------------------------------------+----------------------------------------------------------------
+                                                            cipH |
+                            Environmental and Natural Resources  |    .020692   .0054002     3.83   0.000     .0101079    .0312762
+                                                   Architecture  |   .1799457   .0056091    32.08   0.000      .168952    .1909394
+                                  Area, Ethnic, and Civ Studies  |   .2090314   .0083554    25.02   0.000     .1926551    .2254076
+                                   Communications and Comm Tech  |   .0900836   .0040629    22.17   0.000     .0821205    .0980468
+                              Computer and Information Sciences  |   .3546035   .0040383    87.81   0.000     .3466886    .3625184
+                                                      Education  |  -.0332001   .0037545    -8.84   0.000    -.0405588   -.0258414
+                                                    Engineering  |   .4653846   .0038272   121.60   0.000     .4578834    .4728858
+                                       Engineering Technologies  |    .224649   .0051599    43.54   0.000     .2145357    .2347623
+                              Linguistics and Foreign Languages  |   .1530528    .005648    27.10   0.000     .1419829    .1641227
+                                   Family and Consumer Sciences  |  -.0398245   .0054845    -7.26   0.000    -.0505739    -.029075
+                                                            Law  |   .1217194   .0099608    12.22   0.000     .1021966    .1412421
+                                    English Lang, Lit, and Comp  |   .1310424   .0043686    30.00   0.000     .1224801    .1396047
+                      Liberal Arts and Humanities (and Lib Sci)  |   .0661836   .0050257    13.17   0.000     .0563335    .0760338
+                                                        Biology  |   .3786677   .0041546    91.15   0.000     .3705249    .3868105
+                                     Mathematics and Statistics  |   .3852618   .0049436    77.93   0.000     .3755725    .3949511
+Interdisc and Mulit-Disc Studies (and military and cosmetology)  |   .0902003   .0054325    16.60   0.000     .0795528    .1008478
+                                  Physicall Fitness and Leisure  |  -.0893455   .0050203   -17.80   0.000    -.0991852   -.0795059
+                               Philosophy and Religious Studies  |   .0606099   .0067395     8.99   0.000     .0474007    .0738192
+                               Theology and Religious Vocations  |  -.3397717   .0059268   -57.33   0.000     -.351388   -.3281553
+                             Physical Sciences and Technologies  |   .3640645   .0043652    83.40   0.000     .3555088    .3726202
+                                                     Psychology  |   .0883615   .0040443    21.85   0.000     .0804349    .0962881
+                           Criminal Justice and Fire Protection  |  -.0025932   .0042988    -0.60   0.546    -.0110188    .0058324
+                        Public Affairs, Policy, and Social Work  |   .0063293   .0046134     1.37   0.170    -.0027128    .0153715
+                                                Social Sciences  |   .2966682    .003954    75.03   0.000     .2889186    .3044179
+                          Construction/Mechanic/Production Tech  |   .1679079   .0077977    21.53   0.000     .1526247     .183191
+                       Transportation Sciences and Technologies  |   .2451676   .0076263    32.15   0.000     .2302204    .2601148
+                                                      Fine Arts  |  -.0804797   .0042024   -19.15   0.000    -.0887162   -.0722431
+                       Medical and Health Sciences and Services  |   .3098648   .0038454    80.58   0.000      .302328    .3174017
+                                                       Business  |   .2569405   .0037194    69.08   0.000     .2496505    .2642304
+                                                        History  |   .1661688   .0047563    34.94   0.000     .1568466    .1754911
+                                                                 |
+                                                            race |
+                                             Non-Hispanic White  |   .1604317   .0017543    91.45   0.000     .1569934    .1638701
+                                               African American  |  -.0304539   .0022022   -13.83   0.000    -.0347701   -.0261378
+                                                       Hispanic  |  -.0623344   .0026236   -23.76   0.000    -.0674766   -.0571923
+                                                          Asian  |   .1336252    .002179    61.32   0.000     .1293544     .137896
+                                                                 |
+                                                             sex |
+                                                         Female  |  -.2533339   .0008412  -301.14   0.000    -.2549827   -.2516851
+                                                                 |
+                                                            year |
+                                                           2010  |  -.0019078   .0017803    -1.07   0.284    -.0053971    .0015815
+                                                           2011  |   .0014665   .0018129     0.81   0.419    -.0020867    .0050198
+                                                           2012  |   .0203901   .0017958    11.35   0.000     .0168705    .0239098
+                                                           2013  |   .0371332   .0018012    20.62   0.000     .0336029    .0406635
+                                                           2014  |   .0522439   .0017928    29.14   0.000       .04873    .0557579
+                                                           2015  |   .0709361   .0017837    39.77   0.000     .0674401    .0744322
+                                                           2016  |   .0956514   .0017648    54.20   0.000     .0921925    .0991103
+                                                           2017  |   .1158916   .0017461    66.37   0.000     .1124693    .1193139
+                                                           2018  |   .1393706   .0017432    79.95   0.000     .1359541    .1427871
+                                                           2019  |   .1682145   .0017277    97.36   0.000     .1648283    .1716007
+                                                                 |
+                                                    foreign_born |  -.0030532   .0013955    -2.19   0.029    -.0057884   -.0003181
+                                                           _cons |   10.84185   .0041963  2583.68   0.000     10.83362    10.85007
+----------------------------------------------------------------------------------------------------------------------------------
+
+. local b0 = _b[_cons]
+
+. predict myresid, resid
+(817,694 missing values generated)
+
+. 
+. tempfile coefs
+
+. preserve
+
+.     drop _all
+
+.     set obs 31
+Number of observations (_N) was 0, now 31.
+
+.     gen cipH = _n
+
+.     gen coef = .
+(31 missing values generated)
+
+.     forvalues i = 1/31 {
+  2.         local temp : di e(b)[1,`i']
+  3.         qui replace coef = `temp' in `i'
+  4.     }
+
+.     l
+
+     +------------------+
+     | cipH        coef |
+     |------------------|
+  1. |    1           0 |
+  2. |    2     .020692 |
+  3. |    3    .1799457 |
+  4. |    4    .2090313 |
+  5. |    5    .0900836 |
+     |------------------|
+  6. |    6    .3546035 |
+  7. |    7   -.0332001 |
+  8. |    8    .4653846 |
+  9. |    9     .224649 |
+ 10. |   10    .1530528 |
+     |------------------|
+ 11. |   11   -.0398245 |
+ 12. |   12    .1217194 |
+ 13. |   13    .1310424 |
+ 14. |   14    .0661836 |
+ 15. |   15    .3786677 |
+     |------------------|
+ 16. |   16    .3852618 |
+ 17. |   17    .0902003 |
+ 18. |   18   -.0893455 |
+ 19. |   19    .0606099 |
+ 20. |   20   -.3397717 |
+     |------------------|
+ 21. |   21    .3640645 |
+ 22. |   22    .0883615 |
+ 23. |   23   -.0025932 |
+ 24. |   24    .0063294 |
+ 25. |   25    .2966683 |
+     |------------------|
+ 26. |   26    .1679079 |
+ 27. |   27    .2451676 |
+ 28. |   28   -.0804797 |
+ 29. |   29    .3098648 |
+ 30. |   30    .2569405 |
+     |------------------|
+ 31. |   31    .1661688 |
+     +------------------+
+
+.     save `coefs', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_000003.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_000003.tmp saved as .dta format
+
+. restore
+
+. 
+. reg logwage i.cipH c.age##c.age b5.race b1.sex i.year foreign_born if ftfy & !bad_wage, r
+
+Linear regression                               Number of obs     =  3,147,577
+                                                F(48, 3147528)    =   19520.32
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.2084
+                                                Root MSE          =     .63815
+
+----------------------------------------------------------------------------------------------------------------------------------
+                                                                 |               Robust
+                                                         logwage | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-----------------------------------------------------------------+----------------------------------------------------------------
+                                                            cipH |
+                            Environmental and Natural Resources  |   .0338856   .0050542     6.70   0.000     .0239795    .0437917
+                                                   Architecture  |   .1698375   .0053354    31.83   0.000     .1593802    .1802947
+                                  Area, Ethnic, and Civ Studies  |   .2240674   .0078281    28.62   0.000     .2087247    .2394101
+                                   Communications and Comm Tech  |   .1227092   .0038832    31.60   0.000     .1150982    .1303202
+                              Computer and Information Sciences  |   .3595972   .0038791    92.70   0.000     .3519943    .3672002
+                                                      Education  |  -.0726646   .0036049   -20.16   0.000      -.07973   -.0655992
+                                                    Engineering  |   .4594712   .0036681   125.26   0.000     .4522819    .4666605
+                                       Engineering Technologies  |   .1946495   .0049751    39.13   0.000     .1848985    .2044004
+                              Linguistics and Foreign Languages  |   .1428261    .005374    26.58   0.000     .1322933    .1533588
+                                   Family and Consumer Sciences  |  -.0386403   .0052465    -7.36   0.000    -.0489234   -.0283573
+                                                            Law  |   .1031992   .0096386    10.71   0.000     .0843078    .1220906
+                                    English Lang, Lit, and Comp  |   .1172921   .0041636    28.17   0.000     .1091315    .1254526
+                      Liberal Arts and Humanities (and Lib Sci)  |   .0261565   .0048046     5.44   0.000     .0167397    .0355733
+                                                        Biology  |   .3848764   .0039478    97.49   0.000     .3771389    .3926139
+                                     Mathematics and Statistics  |   .3676854   .0047125    78.02   0.000      .358449    .3769218
+Interdisc and Mulit-Disc Studies (and military and cosmetology)  |   .1228153   .0051435    23.88   0.000     .1127343    .1328963
+                                  Physicall Fitness and Leisure  |   .0020137   .0047268     0.43   0.670    -.0072507    .0112781
+                               Philosophy and Religious Studies  |   .0609694   .0064412     9.47   0.000     .0483448     .073594
+                               Theology and Religious Vocations  |  -.3592444   .0057611   -62.36   0.000    -.3705358   -.3479529
+                             Physical Sciences and Technologies  |   .3396987   .0041509    81.84   0.000     .3315631    .3478342
+                                                     Psychology  |   .0974525   .0038619    25.23   0.000     .0898832    .1050217
+                           Criminal Justice and Fire Protection  |   .0227279   .0040869     5.56   0.000     .0147177    .0307382
+                        Public Affairs, Policy, and Social Work  |  -.0221778   .0044363    -5.00   0.000    -.0308727   -.0134828
+                                                Social Sciences  |   .2956066   .0037875    78.05   0.000     .2881832      .30303
+                          Construction/Mechanic/Production Tech  |   .2184313   .0074571    29.29   0.000     .2038157    .2330469
+                       Transportation Sciences and Technologies  |   .2303056   .0071553    32.19   0.000     .2162816    .2443297
+                                                      Fine Arts  |  -.0533089   .0040251   -13.24   0.000     -.061198   -.0454199
+                       Medical and Health Sciences and Services  |   .2890926   .0036882    78.38   0.000     .2818639    .2963213
+                                                       Business  |   .2386188   .0035703    66.83   0.000     .2316211    .2456165
+                                                        History  |   .1609635   .0045274    35.55   0.000       .15209     .169837
+                                                                 |
+                                                             age |   .1170892    .000298   392.91   0.000     .1165051    .1176732
+                                                                 |
+                                                     c.age#c.age |  -.0011904   3.61e-06  -329.85   0.000    -.0011975   -.0011834
+                                                                 |
+                                                            race |
+                                             Non-Hispanic White  |   .1152515    .001671    68.97   0.000     .1119763    .1185266
+                                               African American  |   -.088069   .0021077   -41.78   0.000       -.0922   -.0839379
+                                                       Hispanic  |  -.0527505   .0024839   -21.24   0.000    -.0576189    -.047882
+                                                          Asian  |   .1397439   .0020943    66.73   0.000     .1356391    .1438487
+                                                                 |
+                                                             sex |
+                                                         Female  |  -.2206877    .000798  -276.57   0.000    -.2222517   -.2191238
+                                                                 |
+                                                            year |
+                                                           2010  |  -.0019703   .0016959    -1.16   0.245    -.0052942    .0013536
+                                                           2011  |  -.0002062   .0017227    -0.12   0.905    -.0035826    .0031701
+                                                           2012  |    .019648   .0017056    11.52   0.000     .0163052    .0229908
+                                                           2013  |   .0382531   .0017104    22.36   0.000     .0349007    .0416054
+                                                           2014  |   .0546487   .0017001    32.14   0.000     .0513166    .0579808
+                                                           2015  |   .0752857   .0016936    44.45   0.000     .0719664     .078605
+                                                           2016  |   .1017861   .0016759    60.74   0.000     .0985014    .1050708
+                                                           2017  |   .1227835   .0016598    73.97   0.000     .1195302    .1260367
+                                                           2018  |   .1480498   .0016577    89.31   0.000     .1448007    .1512988
+                                                           2019  |   .1765452   .0016447   107.34   0.000     .1733217    .1797687
+                                                                 |
+                                                    foreign_born |  -.0662087   .0013454   -49.21   0.000    -.0688456   -.0635718
+                                                           _cons |   8.194814   .0070342  1164.99   0.000     8.181027    8.208601
+----------------------------------------------------------------------------------------------------------------------------------
+
+. predict fullresid, resid
+(817,694 missing values generated)
+
+. predict myxb, xb
+
+. 
+. 
+. * collapse raw earnings by major
+. tempfile rawmean
+
+. preserve
+
+.     collapse (median) median_inc = incwage (mean) mean_inc = incwage if top15, by(cipH age)
+
+.     replace mean_inc = mean_inc/1000
+(600 real changes made)
+
+.     save `rawmean', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_000005.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_000005.tmp saved as .dta format
+
+. restore
+
+. 
+. * collapse raw ftfy earnings by major
+. tempfile rawmeanftfy
+
+. preserve
+
+.     collapse (median) median_ftfy_inc = incwage (mean) mean_ftfy_inc = incwage if top15 & ftfy & !bad_wage, by(cipH age)
+
+.     replace mean_ftfy_inc = mean_ftfy_inc/1000
+(600 real changes made)
+
+.     save `rawmeanftfy', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_000007.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_000007.tmp saved as .dta format
+
+. restore
+
+. 
+. * collapse residual earnings by major
+. tempfile residmean
+
+. preserve
+
+.     collapse (median) median_resid_inc = myresid (mean) mean_resid_inc = myresid if ftfy & !bad_wage & top15, by(cipH age)
+
+.     save `residmean', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_000009.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_000009.tmp saved as .dta format
+
+. restore
+
+. 
+. * collapse residual earnings by major -- all (not just top 15)
+. tempfile residmeanall
+
+. preserve
+
+.     collapse (median) median_resid_inc = myresid (mean) mean_resid_inc = myresid if ftfy & !bad_wage, by(cipH age)
+
+.     save `residmeanall', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000b.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000b.tmp saved as .dta format
+
+. restore
+
+. 
+. * collapse fitted vales by major
+. tempfile xbmean
+
+. preserve
+
+.     collapse (median) median_xb_inc = myxb (mean) mean_xb_inc = myxb if ftfy & !bad_wage & top15, by(cipH age)
+
+.     save `xbmean', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000d.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000d.tmp saved as .dta format
+
+. restore
+
+. 
+. * collapse residual empstat by major
+. tempfile residmeanemp
+
+. preserve
+
+.     collapse (median) median_resid_emp = empstatresid (mean) mean_resid_emp = empstatresid if top15, by(cipH age)
+
+.     save `residmeanemp', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000f.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000f.tmp saved as .dta format
+
+. restore
+
+. 
+. * collapse residual empstat by major -- all (not just top 15)
+. tempfile residmeanempall
+
+. preserve
+
+.     collapse (median) median_resid_emp = empstatresid (mean) mean_resid_emp = empstatresid , by(cipH age)
+
+.     save `residmeanempall', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000h.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000h.tmp saved as .dta format
+
+. restore
+
+. 
+. * create a graph where the y-axis is the average earings, the x-axis is age,
+. * and there is a different-colored or different shaped dot for each major's avg earnings at each age
+. preserve
+
+.     use `rawmean', clear
+
+.     * mean
+.     twoway (scatter mean_inc age if cipH==7, mcolor(midgreen) msymbol(triangle)) (scatter mean_inc age if cipH==15, mcolor(ebblue) msymbol(diamond)) (scatter mean_inc age if cipH==30, mcolor(dk
+> orange) msymbol(square)), ytitle("Average Raw Earnings ($1,000), Including Zeros") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2 "Biology") label(3 "Business")) graphreg
+> ion(color(white%0))
+
+.     graph export "../exhibits/avg_earnings_by_major_and_age.pdf", replace
+file ../exhibits/avg_earnings_by_major_and_age.pdf saved as PDF format
+
+.     * median
+.     twoway (scatter median_inc age if cipH==7, mcolor(midgreen) msymbol(triangle)) (scatter median_inc age if cipH==15, mcolor(ebblue) msymbol(diamond)) (scatter median_inc age if cipH==30, mco
+> lor(dkorange) msymbol(square)), ytitle("Median Raw Earnings ($1,000), Including Zeros") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2 "Biology") label(3 "Business")) gra
+> phregion(color(white%0))
+
+.     graph export "../exhibits/med_earnings_by_major_and_age.pdf", replace
+file ../exhibits/med_earnings_by_major_and_age.pdf saved as PDF format
+
+. restore
+
+. 
+. preserve
+
+.     use `rawmeanftfy', clear
+
+.     * mean
+.     twoway (scatter mean_ftfy_inc age if cipH==7, mcolor(midgreen) msymbol(triangle)) (scatter mean_ftfy_inc age if cipH==15, mcolor(ebblue) msymbol(diamond)) (scatter mean_ftfy_inc age if cipH
+> ==30, mcolor(dkorange) msymbol(square)), ytitle("Average Raw FTFY Earnings ($1,000)") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2 "Biology") label(3 "Business")) graph
+> region(color(white%0))
+
+.     graph export "../exhibits/avg_ftfy_earnings_by_major_and_age.pdf", replace
+file ../exhibits/avg_ftfy_earnings_by_major_and_age.pdf saved as PDF format
+
+.     * median
+.     twoway (scatter median_ftfy_inc age if cipH==7, mcolor(midgreen) msymbol(triangle)) (scatter median_ftfy_inc age if cipH==15, mcolor(ebblue) msymbol(diamond)) (scatter median_ftfy_inc age i
+> f cipH==30, mcolor(dkorange) msymbol(square)), ytitle("Median Raw FTFY Earnings ($1,000)") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2 "Biology") label(3 "Business")) 
+> graphregion(color(white%0))
+
+.     graph export "../exhibits/med_ftfy_earnings_by_major_and_age.pdf", replace
+file ../exhibits/med_ftfy_earnings_by_major_and_age.pdf saved as PDF format
+
+. restore
+
+. 
+. preserve
+
+.     use `residmean', clear
+
+.     * mean
+.     * all ages
+.     twoway (scatter mean_resid_inc age if cipH==7, mcolor(midgreen) msymbol(triangle)) (scatter mean_resid_inc age if cipH==15, mcolor(ebblue) msymbol(diamond)) (scatter mean_resid_inc age if c
+> ipH==30, mcolor(dkorange) msymbol(square)), ytitle("Average FTFY Log Earnings Residuals") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2 "Biology") label(3 "Business")) g
+> raphregion(color(white%0))
+
+.     graph export "../exhibits/avg_resid_earnings_by_major_and_age.pdf", replace
+file ../exhibits/avg_resid_earnings_by_major_and_age.pdf saved as PDF format
+
+.     * age 26+
+.     twoway (scatter mean_resid_inc age if cipH==7 & age>=26, mcolor(midgreen) msymbol(triangle)) (scatter mean_resid_inc age if cipH==15 & age>=26, mcolor(ebblue) msymbol(diamond)) (scatter mea
+> n_resid_inc age if cipH==30 & age>=26, mcolor(dkorange) msymbol(square)), ytitle("Average FTFY Log Earnings Residuals, Age 26+") xtitle("Age") legend(position(6) rows(1) label(1 "Education") la
+> bel(2 "Biology") label(3 "Business")) graphregion(color(white%0))
+
+.     graph export "../exhibits/avg_resid_earnings_by_major_and_age26.pdf", replace
+file ../exhibits/avg_resid_earnings_by_major_and_age26.pdf saved as PDF format
+
+.     * median
+.     * all ages
+.     twoway (scatter median_resid_inc age if cipH==7, mcolor(midgreen) msymbol(triangle)) (scatter median_resid_inc age if cipH==15, mcolor(ebblue) msymbol(diamond)) (scatter median_resid_inc ag
+> e if cipH==30, mcolor(dkorange) msymbol(square)), ytitle("Median FTFY Log Earnings Residuals") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2 "Biology") label(3 "Business
+> ")) graphregion(color(white%0))
+
+.     graph export "../exhibits/med_resid_earnings_by_major_and_age.pdf", replace
+file ../exhibits/med_resid_earnings_by_major_and_age.pdf saved as PDF format
+
+.     * age 26+
+.     twoway (scatter median_resid_inc age if cipH==7 & age>=26, mcolor(midgreen) msymbol(triangle)) (scatter median_resid_inc age if cipH==15 & age>=26, mcolor(ebblue) msymbol(diamond)) (scatter
+>  median_resid_inc age if cipH==30 & age>=26, mcolor(dkorange) msymbol(square)), ytitle("Median FTFY Log Earnings Residuals, Age 26+") xtitle("Age") legend(position(6) rows(1) label(1 "Education
+> ") label(2 "Biology") label(3 "Business")) graphregion(color(white%0))
+
+.     graph export "../exhibits/med_resid_earnings_by_major_and_age26.pdf", replace
+file ../exhibits/med_resid_earnings_by_major_and_age26.pdf saved as PDF format
+
+. restore
+
+. 
+. preserve
+
+.     use `residmeanemp', clear
+
+.     * mean
+.     * all ages
+.     twoway (scatter mean_resid_emp age if cipH==7, mcolor(midgreen) msymbol(triangle)) (scatter mean_resid_emp age if cipH==15, mcolor(ebblue) msymbol(diamond)) (scatter mean_resid_emp age if c
+> ipH==30, mcolor(dkorange) msymbol(square)), ytitle("Average Pr(work FTFY) Residuals") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2 "Biology") label(3 "Business")) graph
+> region(color(white%0))
+
+.     graph export "../exhibits/avg_resid_employed_by_major_and_age.pdf", replace
+file ../exhibits/avg_resid_employed_by_major_and_age.pdf saved as PDF format
+
+.     * age 26+
+.     twoway (scatter mean_resid_emp age if cipH==7 & age>=26, mcolor(midgreen) msymbol(triangle)) (scatter mean_resid_emp age if cipH==15 & age>=26, mcolor(ebblue) msymbol(diamond)) (scatter mea
+> n_resid_emp age if cipH==30 & age>=26, mcolor(dkorange) msymbol(square)), ytitle("Average Pr(work FTFY) Residuals, Age 26+") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(
+> 2 "Biology") label(3 "Business")) graphregion(color(white%0))
+
+.     graph export "../exhibits/avg_resid_employed_by_major_and_age26.pdf", replace
+file ../exhibits/avg_resid_employed_by_major_and_age26.pdf saved as PDF format
+
+.     * median
+.     * all ages
+.     twoway (scatter median_resid_emp age if cipH==7, mcolor(midgreen) msymbol(triangle)) (scatter median_resid_emp age if cipH==15, mcolor(ebblue) msymbol(diamond)) (scatter median_resid_emp ag
+> e if cipH==30, mcolor(dkorange) msymbol(square)), ytitle("Median Pr(work FTFY) Residuals") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2 "Biology") label(3 "Business")) 
+> graphregion(color(white%0))
+
+.     graph export "../exhibits/med_resid_employed_by_major_and_age.pdf", replace
+file ../exhibits/med_resid_employed_by_major_and_age.pdf saved as PDF format
+
+.     * age 26+
+.     twoway (scatter median_resid_emp age if cipH==7 & age>=26, mcolor(midgreen) msymbol(triangle)) (scatter median_resid_emp age if cipH==15 & age>=26, mcolor(ebblue) msymbol(diamond)) (scatter
+>  median_resid_emp age if cipH==30 & age>=26, mcolor(dkorange) msymbol(square)), ytitle("Median Pr(work FTFY) Residuals, Age 26+") xtitle("Age") legend(position(6) rows(1) label(1 "Education") l
+> abel(2 "Biology") label(3 "Business")) graphregion(color(white%0))
+
+.     graph export "../exhibits/med_resid_employed_by_major_and_age26.pdf", replace
+file ../exhibits/med_resid_employed_by_major_and_age26.pdf saved as PDF format
+
+. restore
+
+. 
+. preserve
+
+.     use `xbmean', clear
+
+.     * all ages
+.     twoway (scatter mean_xb_inc age if cipH==7, mcolor(midgreen) msymbol(triangle)) (scatter mean_xb_inc age if cipH==15, mcolor(ebblue) msymbol(diamond)) (scatter mean_xb_inc age if cipH==30, 
+> mcolor(dkorange) msymbol(square)), ytitle("Average FTFY Log Earnings Fitted Values") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2 "Biology") label(3 "Business")) graphr
+> egion(color(white%0))
+
+.     graph export "../exhibits/avg_xb_earnings_by_major_and_age.pdf", replace
+file ../exhibits/avg_xb_earnings_by_major_and_age.pdf saved as PDF format
+
+.     * age 26+
+.     twoway (scatter mean_xb_inc age if cipH==7 & age>=26, mcolor(midgreen) msymbol(triangle)) (scatter mean_xb_inc age if cipH==15 & age>=26, mcolor(ebblue) msymbol(diamond)) (scatter mean_xb_i
+> nc age if cipH==30 & age>=26, mcolor(dkorange) msymbol(square)), ytitle("Average FTFY Log Earnings Fitted Values, Age 26+") xtitle("Age") legend(position(6) rows(1) label(1 "Education") label(2
+>  "Biology") label(3 "Business")) graphregion(color(white%0))
+
+.     graph export "../exhibits/avg_xb_earnings_by_major_and_age26.pdf", replace
+file ../exhibits/avg_xb_earnings_by_major_and_age26.pdf saved as PDF format
+
+. restore
+
+. 
+. 
+. *-------------------------------------------------------------------------------
+. * Graphs: trade-off between lifetime and early career earnings profile
+. *-------------------------------------------------------------------------------
+. 
+. * compute frequencies by major
+. tempfile counts
+
+. preserve
+
+.     collapse (count) N = myresid if ftfy & !bad_wage, by(cipH)
+
+.     save `counts', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000o.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000o.tmp saved as .dta format
+
+. restore
+
+. 
+. /*
+> * compute liftime residualized earnings by major (focusing only on FTFY workers with valid earnings)
+> tempfile lifetime
+> preserve
+>     replace myresid = myresid + 0.5 if ftfy & !bad_wage // to avoid negative values
+>     collapse (mean) mean_inc = myresid if ftfy & !bad_wage, by(cipH age)
+>     collapse (sum) lifetime_inc = mean_inc, by(cipH)
+>     replace lifetime_inc = lifetime_inc
+>     save `lifetime', replace
+>     l
+> restore
+> */
+. 
+. * compute growth in average earnings between ages 25-27 and 40-42
+. tempfile growth
+
+. preserve
+
+.     replace myresid = myresid + 0.5 if ftfy & !bad_wage // to avoid negative values
+(3,147,577 real changes made)
+
+.     collapse (mean) mean_inc = myresid if ftfy & !bad_wage, by(cipH age)
+
+.     reshape wide mean_inc, i(cipH) j(age)
+(j = 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60)
+
+Data                               Long   ->   Wide
+-----------------------------------------------------------------------------
+Number of observations            1,240   ->   31          
+Number of variables                   3   ->   41          
+j variable (40 values)              age   ->   (dropped)
+xij variables:
+                               mean_inc   ->   mean_inc21 mean_inc22 ... mean_inc60
+-----------------------------------------------------------------------------
+
+.     gen growth = mean_inc40 - mean_inc25
+
+.     gen growthavg = (mean_inc40+mean_inc41+mean_inc42)/3 - (mean_inc25+mean_inc26+mean_inc27)/3
+
+.     gen lifetime_inc = (mean_inc45+mean_inc46+mean_inc47)/3
+
+.     gen initial_inc = (mean_inc25+mean_inc26+mean_inc27)/3
+
+.     save `growth', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000q.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000q.tmp saved as .dta format
+
+. restore
+
+. 
+. tempfile lifetime_and_growth
+
+. preserve
+
+.     use `growth', clear
+
+.     merge 1:1 cipH using `counts', nogen
+(label vlcipH already defined)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                                31  
+    -----------------------------------------
+
+.     merge 1:1 cipH using `coefs', nogen
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                                31  
+    -----------------------------------------
+
+.     merge 1:1 cipH using `top15', nogen
+(label vlcipH already defined)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                                31  
+    -----------------------------------------
+
+.     save `lifetime_and_growth', replace
+(file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000s.tmp not found)
+file C:\Users\Admin\AppData\Local\Temp\ST_25c_00000s.tmp saved as .dta format
+
+. restore
+
+. 
+. * scatter plot of lifetime earnings vs. growth in earnings
+. preserve
+
+.     use `lifetime_and_growth', clear
+
+.     reg lifetime_inc initial_inc
+
+      Source |       SS           df       MS      Number of obs   =        31
+-------------+----------------------------------   F(1, 29)        =      9.38
+       Model |  .017150443         1  .017150443   Prob > F        =    0.0047
+    Residual |  .053023918        29  .001828411   R-squared       =    0.2444
+-------------+----------------------------------   Adj R-squared   =    0.2183
+       Total |  .070174361        30  .002339145   Root MSE        =    .04276
+
+------------------------------------------------------------------------------
+lifetime_inc | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+ initial_inc |  -.2359008   .0770245    -3.06   0.005    -.3934335   -.0783681
+       _cons |   .6659589   .0086714    76.80   0.000      .648224    .6836939
+------------------------------------------------------------------------------
+
+.     reg lifetime_inc initial_inc
+
+      Source |       SS           df       MS      Number of obs   =        31
+-------------+----------------------------------   F(1, 29)        =      9.38
+       Model |  .017150443         1  .017150443   Prob > F        =    0.0047
+    Residual |  .053023918        29  .001828411   R-squared       =    0.2444
+-------------+----------------------------------   Adj R-squared   =    0.2183
+       Total |  .070174361        30  .002339145   Root MSE        =    .04276
+
+------------------------------------------------------------------------------
+lifetime_inc | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+ initial_inc |  -.2359008   .0770245    -3.06   0.005    -.3934335   -.0783681
+       _cons |   .6659589   .0086714    76.80   0.000      .648224    .6836939
+------------------------------------------------------------------------------
+
+.     reg lifetime_inc initial_inc [fweight=N]
+
+      Source |       SS           df       MS      Number of obs   = 3,147,577
+-------------+----------------------------------   F(1, 3147575)   >  99999.00
+       Model |  3262.59575         1  3262.59575   Prob > F        =    0.0000
+    Residual |  2878.90362 3,147,575  .000914642   R-squared       =    0.5312
+-------------+----------------------------------   Adj R-squared   =    0.5312
+       Total |  6141.49937 3,147,576  .001951184   Root MSE        =    .03024
+
+------------------------------------------------------------------------------
+lifetime_inc | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+ initial_inc |   -.332483    .000176 -1888.67   0.000    -.3328281    -.332138
+       _cons |   .6670917   .0000191  3.5e+04   0.000     .6670542    .6671293
+------------------------------------------------------------------------------
+
+.     /*
+>     twoway (scatter lifetime_inc growth) , ytitle("Lifetime FTFY Log Earnings Residuals") xtitle("Change in FTFY Log Earnings Residuals, Ages 25-40") legend(off) graphregion(color(white%0))
+>     graph export "../exhibits/lifetime_vs_growth.pdf", replace
+>     twoway (scatter lifetime_inc growth [fweight=N], msymbol(Oh)) (lfit lifetime_inc growth [fweight=N] ) , ytitle("Lifetime FTFY Log Earnings Residuals") xtitle("Change in FTFY Log Earnings Re
+> siduals, Ages 25-40") legend(off) graphregion(color(white%0)) 
+>     graph export "../exhibits/lifetime_vs_growth_sized.pdf", replace
+>     twoway (scatter coef growth [fweight=N], msymbol(Oh)) (lfit coef growth [fweight=N] ) , ytitle("Log Earnings Coefficient") xtitle("Change in FTFY Log Earnings Residuals, Ages 25-40") legend
+> (off) graphregion(color(white%0)) 
+>     graph export "../exhibits/coef_vs_growth_sized.pdf", replace
+>     twoway (scatter lifetime_inc growthavg) , ytitle("Lifetime FTFY Log Earnings Residuals") xtitle("Change in FTFY Log Earnings Residuals, Ages 25-27 vs. 40-42") legend(off) graphregion(color(
+> white%0))
+>     graph export "../exhibits/lifetime_vs_avg_growth.pdf", replace
+>     twoway (scatter lifetime_inc growthavg [fweight=N], msymbol(Oh)) (lfit lifetime_inc growthavg [fweight=N] ) , ytitle("Lifetime FTFY Log Earnings Residuals") xtitle("Change in FTFY Log Earni
+> ngs Residuals, Ages 25-27 vs. 40-42") legend(off) graphregion(color(white%0)) 
+>     graph export "../exhibits/lifetime_vs_avg_growth_sized.pdf", replace
+>     twoway (scatter coef growthavg [fweight=N], msymbol(Oh)) (lfit coef growthavg [fweight=N] ) , ytitle("Log Earnings Coefficient") xtitle("Change in FTFY Log Earnings Residuals, Ages 25-27 vs
+> . 40-42") legend(off) graphregion(color(white%0)) 
+>     graph export "../exhibits/coef_vs_avg_growth_sized.pdf", replace
+>     twoway (scatter lifetime_inc growth if top15, mlabel(cipH)) , ytitle("Lifetime FTFY Log Earnings Residuals") xtitle("Change in FTFY Log Earnings Residuals, Ages 25-40") legend(off) graphreg
+> ion(color(white%0))
+>     graph export "../exhibits/lifetime_vs_growth_top15.pdf", replace
+>     twoway (scatter lifetime_inc growth [fweight=N] if top15, msymbol(Oh) mlabel(cipH)) (lfit lifetime_inc growth [fweight=N] if top15 ) , ytitle("Lifetime FTFY Log Earnings Residuals") xtitle(
+> "Change in FTFY Log Earnings Residuals, Ages 25-40") legend(off) graphregion(color(white%0)) 
+>     graph export "../exhibits/lifetime_vs_growth_sized_top15.pdf", replace
+>     twoway (scatter coef growth [fweight=N] if top15, msymbol(Oh) mlabel(cipH)) (lfit coef growth [fweight=N] if top15 ) , ytitle("Log Earnings Coefficient") xtitle("Change in FTFY Log Earnings
+>  Residuals, Ages 25-40") legend(off) graphregion(color(white%0)) 
+>     graph export "../exhibits/coef_vs_growth_sized_top15.pdf", replace
+>     twoway (scatter lifetime_inc growthavg if top15 & !inlist(cipH,7,15,30), mlabel(cipH)) (scatter lifetime_inc growthavg if inlist(cipH,7,15,30), mlabel(cipH) mcolor(blue) mlabcolor(black) ml
+> abgap(0.3cm) mlabpos(12)), ytitle("Lifetime FTFY Log Earnings Residuals") xtitle("Change in FTFY Log Earnings Residuals, Ages 25-27 vs. 40-42") legend(off) graphregion(color(white%0))
+>     graph export "../exhibits/lifetime_vs_avg_growth_top15.pdf", replace
+>     twoway (scatter lifetime_inc growthavg [fweight=N] if top15 & !inlist(cipH,7,15,30), msymbol(Oh)) (lfit lifetime_inc growthavg [fweight=N] if top15 ) (scatter lifetime_inc growthavg [fweigh
+> t=N] if inlist(cipH,7,15,30), msymbol(O) mcolor(blue)) (scatter lifetime_inc growthavg [fweight=N] if inlist(cipH,7,15,30), mlabel(cipH) mcolor(blue) mlabcolor(black) mlabgap(0.3cm) mlabpos(12)
+> ) , ytitle("Lifetime FTFY Log Earnings Residuals") xtitle("Change in FTFY Log Earnings Residuals, Ages 25-27 vs. 40-42") legend(off) graphregion(color(white%0)) 
+>     graph export "../exhibits/lifetime_vs_avg_growth_sized_top15.pdf", replace
+>     twoway (scatter coef growthavg [fweight=N] if top15 & !inlist(cipH,7,15,30), msymbol(Oh)) (lfit coef growthavg [fweight=N] if top15 ) (scatter coef growthavg [fweight=N] if inlist(cipH,7,15
+> ,30), msymbol(O) mcolor(blue)) (scatter coef growthavg [fweight=N] if inlist(cipH,7,15,30), mlabel(cipH) mcolor(blue) mlabcolor(black) mlabgap(0.3cm) mlabpos(12)) , ytitle("Log Earnings Coeffic
+> ient") xtitle("Change in FTFY Log Earnings Residuals, Ages 25-27 vs. 40-42") legend(off) graphregion(color(white%0)) 
+>     graph export "../exhibits/coef_vs_avg_growth_sized_top15.pdf", replace
+>     */
+.     twoway (scatter lifetime_inc initial_inc if top15 & !inlist(cipH,7,15,30), mlabel(cipH)) (scatter lifetime_inc initial_inc if inlist(cipH,7,15,30), mlabel(cipH) mcolor(blue) mlabcolor(black
+> ) mlabgap(0.3cm) mlabpos(12)), ytitle("FTFY Log Earnings Residuals, Ages 45-47") xtitle("FTFY Log Earnings Residuals, Ages 25-27") legend(off) graphregion(color(white%0))
+
+.     graph export "../exhibits/age46v26_top15.pdf", replace
+file ../exhibits/age46v26_top15.pdf saved as PDF format
+
+.     twoway (scatter lifetime_inc initial_inc [fweight=N] if top15 & !inlist(cipH,7,15,30), msymbol(Oh)) (lfit lifetime_inc initial_inc [fweight=N] if top15 ) (scatter lifetime_inc initial_inc [
+> fweight=N] if inlist(cipH,7,15,30), msymbol(O) mcolor(blue)) (scatter lifetime_inc initial_inc [fweight=N] if inlist(cipH,7,15,30), mlabel(cipH) mcolor(blue) mlabcolor(black) mlabgap(0.3cm) mla
+> bpos(12)) , ytitle("FTFY Log Earnings Residuals, Ages 45-47") xtitle("FTFY Log Earnings Residuals, Ages 25-27") legend(off) graphregion(color(white%0)) 
+
+.     graph export "../exhibits/age46v26_sized_top15.pdf", replace
+file ../exhibits/age46v26_sized_top15.pdf saved as PDF format
+
+. restore
+
+. 
+. log close
+      name:  <unnamed>
+       log:  C:\Users\Admin\Dropbox\Conferences\SFS-Cavalcade-May2023\src\analysis.log
+  log type:  text
+ closed on:  18 May 2023, 11:27:20
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

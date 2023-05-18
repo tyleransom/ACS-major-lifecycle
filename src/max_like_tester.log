@@ -1,0 +1,172 @@
+----------------------------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\ADMIN.DESKTOP-90SRH89\Dropbox\Conferences\SFS-Cavalcade-May2023\src\max_like_tester.log
+  log type:  text
+ opened on:  16 May 2023, 08:28:33
+
+. 
+. 
+. sysuse nlsw88, clear
+(NLSW, 1988 extract)
+
+. gen lnwage = ln(wage)
+
+. gen occ_agg = occ
+(9 missing values generated)
+
+. recode occ_agg (9 10 11 12 = 13)
+(28 changes made to occ_agg)
+
+. *replace occ_agg = 9 if occ_agg==13
+. 
+. *--------------------------------------
+. * Program to run with ml max that allows variance to be different across wage types
+. *--------------------------------------
+. global dumbo occ_agg
+
+. levelsof ${dumbo}, local(dumbolevels)
+1 2 3 4 5 6 7 8 13
+
+. di `dumbolevels'
+1234567813
+
+. di "`dumbolevels'"
+1 2 3 4 5 6 7 8 13
+
+. foreach i of local dumbolevels {
+  2.     di `i'
+  3. }
+1
+2
+3
+4
+5
+6
+7
+8
+13
+
+. global dumbolevels = "`dumbolevels'"
+
+. di $dumbolevels
+1234567813
+
+. 
+. capture program drop normal
+
+. program normal
+  1.         version 13.1
+  2.         args lnf Xb sigma1 sigma2 sigma3 sigma4 sigma5 sigma6 sigma7 sigma8 sigma13
+  3.         quietly replace `lnf'=( ${dumbo}==1 )*ln(normalden(${ML_y1}, `Xb', `sigma1'))+ /// 
+>                           ( ${dumbo}==2 )*ln(normalden(${ML_y1}, `Xb', `sigma2'))+ ///
+>                           ( ${dumbo}==3 )*ln(normalden(${ML_y1}, `Xb', `sigma3'))+ ///
+>                           ( ${dumbo}==4 )*ln(normalden(${ML_y1}, `Xb', `sigma4'))+ ///
+>                           ( ${dumbo}==5 )*ln(normalden(${ML_y1}, `Xb', `sigma5'))+ ///
+>                           ( ${dumbo}==6 )*ln(normalden(${ML_y1}, `Xb', `sigma6'))+ ///
+>                           ( ${dumbo}==7 )*ln(normalden(${ML_y1}, `Xb', `sigma7'))+ ///
+>                           ( ${dumbo}==8 )*ln(normalden(${ML_y1}, `Xb', `sigma8'))+ ///
+>                           ( ${dumbo}==13)*ln(normalden(${ML_y1}, `Xb', `sigma13'))
+  4. end
+
+. 
+. /*
+> capture program drop normal
+> program normal
+>     version 13.1
+>     local argy = "" 
+>     foreach i in 1 2 3 4 5 6 7 8 13 {
+>         local argy = "`argy' sigma`i'"
+>     }
+>     di "`argy'"
+>     args lnf Xb `argy'
+>     quietly replace `lnf' = 0
+>     foreach i in 1 2 3 4 5 6 7 8 13 {
+>         quietly replace `lnf' = `lnf' + ( ${dumbo}==`i')*ln(normalden(${ML_y1}, `Xb', ``sigma'`i''))
+>     }
+> end
+> */
+. 
+. /*
+> capture program drop normal
+> program normal
+>     version 13.1
+>     args lnf Xb
+>     quietly replace `lnf' = 0
+>     foreach i of global dumbolevels {
+>         quietly replace `lnf' = `lnf' + ( ${dumbo}==`i')*ln(normalden(${ML_y1}, `Xb', ``sigma'`i''))
+>     }
+> end
+> */
+. 
+. 
+. ml model lf normal (lnwage = i.occ_agg i.race c.age##c.age union ) /sigma1 /sigma2 /sigma3 /sigma4 /sigma5 /sigma6 /sigma7 /sigma8 /sigma13 if rac
+> e<3
+
+. ml max
+
+Initial:      Log likelihood =     -<inf>  (could not be evaluated)
+Feasible:     Log likelihood = -8528.3737
+Rescale:      Log likelihood = -2671.3852
+Rescale eq:   Log likelihood = -1420.3451
+Iteration 0:  Log likelihood = -1420.3451  (not concave)
+Iteration 1:  Log likelihood = -1163.5778  
+Iteration 2:  Log likelihood = -1116.3072  
+Iteration 3:  Log likelihood = -1090.1842  
+Iteration 4:  Log likelihood = -1088.9713  
+Iteration 5:  Log likelihood = -1088.9647  
+Iteration 6:  Log likelihood = -1088.9646  
+
+                                                        Number of obs =  1,845
+                                                        Wald chi2(12) = 687.66
+Log likelihood = -1088.9646                             Prob > chi2   = 0.0000
+
+------------------------------------------------------------------------------
+      lnwage | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+     occ_agg |
+          2  |   .0143277   .0437056     0.33   0.743    -.0713338    .0999892
+          3  |  -.3558811   .0315429   -11.28   0.000    -.4177042   -.2940581
+          4  |  -.3452672    .077793    -4.44   0.000    -.4977387   -.1927957
+          5  |  -.3118288   .0715194    -4.36   0.000    -.4520042   -.1716535
+          6  |  -.5644172   .0385173   -14.65   0.000    -.6399097   -.4889247
+          7  |   -1.09792   .0932725   -11.77   0.000    -1.280731   -.9151095
+          8  |  -.6650354   .0411849   -16.15   0.000    -.7457563   -.5843146
+         13  |  -.2343235   .0408574    -5.74   0.000    -.3144025   -.1542444
+             |
+        race |
+      Black  |  -.0651662   .0233062    -2.80   0.005    -.1108454    -.019487
+         age |   .0902969   .0911594     0.99   0.322    -.0883722     .268966
+             |
+ c.age#c.age |  -.0011201   .0011541    -0.97   0.332     -.003382    .0011418
+             |
+       union |   .2673465   .0242581    11.02   0.000     .2198016    .3148915
+       _cons |   .3452043   1.792526     0.19   0.847    -3.168083    3.858491
+-------------+----------------------------------------------------------------
+     /sigma1 |   .4356708   .0189853    22.95   0.000     .3984603    .4728813
+     /sigma2 |   .5108988   .0243252    21.00   0.000     .4632222    .5585754
+     /sigma3 |   .4130394   .0119028    34.70   0.000     .3897102    .4363685
+     /sigma4 |   .6316046   .0515763    12.25   0.000      .530517    .7326921
+     /sigma5 |   .4684469   .0468765     9.99   0.000     .3765707    .5603232
+     /sigma6 |   .3847882   .0189765    20.28   0.000      .347595    .4219815
+     /sigma7 |   .3975055   .0630174     6.31   0.000     .2739936    .5210173
+     /sigma8 |   .4394207   .0219072    20.06   0.000     .3964834    .4823581
+    /sigma13 |   .4258344   .0215862    19.73   0.000     .3835262    .4681427
+------------------------------------------------------------------------------
+
+. asge
+command asge is unrecognized
+r(199);
+
+end of do-file
+
+r(199);
+
+. do analysis
+
+. clear all
+
+. version 18
+
+. set more off
+
+. capture log close
